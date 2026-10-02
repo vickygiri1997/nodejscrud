@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node-pg-migrate up && node server.js",
+    "predev": "node-pg-migrate up",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +18,8 @@
     "express": "^5.2.1",
     "node-pg-migrate": "^9.0.0",
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

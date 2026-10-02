@@ -153,19 +153,108 @@ This generated a migration file under `migrations/`; it does not yet create a ta
 
 ### Step 13: Define the users table migration
 
-The generated migration now defines `up` to create the `users` table and `down` to drop it. The `id`, `name`, `email`, and `created_at` columns and their constraints are included.
+The migration defines `up` to create the `users` table and `down` to drop it. It includes `id`, `name`, `email`, and `created_at`; table creation uses `ifNotExists` so it does not fail if the table already exists. The migration uses CommonJS syntax to match this project and passed `node --check`; it has not yet been run against the database.
 
-The migration will describe the schema change only. A later step will configure the application to apply pending migrations automatically at startup.
+A later step will configure the application to apply pending migrations automatically at startup.
 
 ### Step 14: Add the migration connection URL
 
-Add a `DATABASE_URL` entry to the local `.env` file so `node-pg-migrate` can connect. Use your existing PostgreSQL username and password, and keep the real value private:
+Add a `DATABASE_URL` entry to the local `.env` file so `node-pg-migrate` can connect. The CLI loads `.env` and uses `DATABASE_URL` by default. Use your existing PostgreSQL username and password, and keep the real value private:
 
 ```env
 DATABASE_URL=postgres://postgres:your_postgres_password@localhost:5432/demoapp
 ```
 
-Replace the username, password, host, and port if your local PostgreSQL settings differ. If the password contains URL-special characters, URL-encode them in this connection string. Do not put a real URL in this README. This step is pending.
+Replace the username, password, host, and port if your local PostgreSQL settings differ. Use `PGPORT` (not `PGPOST`) for the port setting. If the password contains URL-special characters, URL-encode them in this connection string. Do not put a real URL in this README. You report that the migration ran, so the CLI connection configuration is working.
+
+### Step 15: Apply pending migrations
+
+After correcting the local `.env` values and setting `DATABASE_URL`, run this from the `NodeJSBackend` directory:
+
+```bash
+npx node-pg-migrate up
+```
+
+This applies any pending migration files, including the initial `users` table migration. You confirmed the migration completed and the table was created.
+
+### Step 16: Run migrations automatically when starting the app
+
+The `start` script in `package.json` is configured as:
+
+```json
+"start": "node-pg-migrate up && node server.js"
+```
+
+Run the application with `npm start`. Pending migrations run before Express starts; if a migration fails, the server will not start. Do not edit a migration after it has been applied. For each future table or column change, create a new migration with `npx node-pg-migrate create <descriptive-name>`; the next app start applies it automatically.
+
+### Step 17: Install Nodemon for development
+
+Run this from the `NodeJSBackend` directory:
+
+```bash
+npm install --save-dev nodemon
+```
+
+Nodemon is installed as a development dependency.
+
+### Step 18: Start the auto-reloading development server
+
+The `predev` script applies pending migrations, then `dev` starts Nodemon:
+
+```json
+"predev": "node-pg-migrate up",
+"dev": "nodemon server.js"
+```
+
+Run the app from the `NodeJSBackend` directory with:
+
+```bash
+npm run dev
+```
+
+Nodemon restarts the server when JavaScript files change. Stop it with `Ctrl+C`.
+
+### Step 19: List users through the API
+
+The `GET /api/users` route is connected to the users controller and selects all users from PostgreSQL, ordered by `id`. It returns a JSON array (an empty array when there are no users).
+
+With the development server running, `GET http://localhost:9000/api/users` returns a JSON array. Verified locally; it currently returns an empty array because no users have been inserted yet.
+
+### Step 20: Create users through the API
+
+`POST /api/users` accepts a JSON body with required `name` and `email` fields. It inserts the user with a parameterized query and returns the created row with HTTP `201`. Missing fields return `400`; a duplicate email returns `409`.
+
+Postman request:
+
+- Method: `POST`
+- URL: `http://localhost:9000/api/users`
+- Body: select `raw` and `JSON`, then send `{"name":"Test User","email":"test.user@example.com"}`
+
+The email must be unique for each test. This endpoint is implemented; verify it in Postman.
+
+### Step 21: Update users through the API
+
+`PUT /api/users/:id` replaces a user's `name` and `email`. Both fields are required. It returns `404` when the ID does not exist, `409` when the email belongs to another user, and `400` for an invalid ID or missing fields.
+
+Postman request:
+
+- Method: `PUT`
+- URL: `http://localhost:9000/api/users/1` (replace `1` with an existing user ID)
+- Body: select `raw` and `JSON`, then send `{"name":"Updated Name","email":"updated@example.com"}`
+
+The endpoint is implemented; verify it using an existing user ID and an email not used by another user.
+
+### Step 22: Delete users through the API
+
+`DELETE /api/users/:id` deletes the user with the supplied positive integer ID and returns the deleted row. It returns `404` if that ID does not exist and `400` if the ID is invalid.
+
+Postman request:
+
+- Method: `DELETE`
+- URL: `http://localhost:9000/api/users/1` (replace `1` with the ID of a user you intend to delete)
+- Body: none
+
+This endpoint is implemented; verify using a test user because deletion removes the row.
 
 ## Progress log
 
